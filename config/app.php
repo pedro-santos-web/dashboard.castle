@@ -123,4 +123,20 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Get Servers From Env Variables
+    | Change range(0, 3) to change number of servers
+    | Used in ServerSeeder
+    |--------------------------------------------------------------------------
+    */
+
+    'servers' => array_map(function ($i) {
+        return [
+            env("{$i}_SERVER_IP"),
+            env("{$i}_SERVER_NAME"),
+            env("{$i}_SERVER_DESCRIPTION"),
+        ];
+    }, range(0, 3)),
+
 ];

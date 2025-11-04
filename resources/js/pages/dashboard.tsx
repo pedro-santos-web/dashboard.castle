@@ -1,8 +1,14 @@
-import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
+import { DashboardStats } from '@/components/dashboard-stats';
+import { ServerGrid } from '@/components/server-grid';
+import { ServicesOverview } from '@/components/services-overview';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
 import { dashboard } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
+import { RefreshCw, Settings } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -11,25 +17,147 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
+interface ServerData {
+    id: number;
+    name: string;
+    ip_address: string;
+    description: string;
+    status: 'online' | 'offline';
+    last_ping: string | null;
+}
+
 export default function Dashboard() {
+    const [servers, setServers] = useState<ServerData[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+
+    const fetchServers = async () => {
+        try {
+            setLoading(true);
+            const response = await fetch('/api/servers');
+            const data = await response.json();
+            setServers(data);
+            setLastRefresh(new Date());
+        } catch (error) {
+            console.error('Failed to fetch servers:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const refreshStatus = async () => {
+        try {
+            const response = await fetch('/api/status');
+            const data = await response.json();
+            setServers(data);
+            setLastRefresh(new Date());
+        } catch (error) {
+            console.error('Failed to refresh status:', error);
+        }
+    };
+
+    useEffect(() => {
+        fetchServers();
+
+        // Auto-refresh every 30 seconds
+        const interval = setInterval(refreshStatus, 30000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const onlineServers = servers.filter(server => server.status === 'online').length;
+    const totalServers = servers.length;
+    const uptimePercentage = totalServers > 0 ? (onlineServers / totalServers) * 100 : 0;
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Dashboard" />
-            <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
-                <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
+            <Head title="Homelab Dashboard" />
+            <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight">
+                            Dashboard
+                        </h1>
+                        <p className="text-muted-foreground">
+                            Monitor and manage homelab infrastructure
+                        </p>
                     </div>
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                    </div>
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
+                    <div className="flex items-center space-x-2">
+                        <p className="text-sm text-muted-foreground">
+                            Last updated: {lastRefresh.toLocaleTimeString()}
+                        </p>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={refreshStatus}
+                            disabled={loading}
+                        >
+                            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                            Refresh
+                        </Button>
+                        <Button variant="outline" size="sm">
+                            <Settings className="h-4 w-4 mr-2" />
+                            Settings
+                        </Button>
                     </div>
                 </div>
-                <div className="relative min-h-[100vh] flex-1 overflow-hidden rounded-xl border border-sidebar-border/70 md:min-h-min dark:border-sidebar-border">
-                    <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
+
+                {/* Stats Overview */}
+                <DashboardStats
+                    totalServers={totalServers}
+                    onlineServers={onlineServers}
+                    uptimePercentage={uptimePercentage}
+                />
+
+                {/* Server Status Grid */}
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-xl font-semibold">Server Status</h2>
+                        <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                            <div className="flex items-center space-x-1">
+                                <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                                <span>{onlineServers} Online</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                                <div className="h-2 w-2 rounded-full bg-red-500"></div>
+                                <span>{totalServers - onlineServers} Offline</span>
+                            </div>
+                        </div>
+                    </div>
+                    <ServerGrid servers={servers} isLoading={loading} />
                 </div>
+
+                {/* Services Overview */}
+                <ServicesOverview />
+
+                {/* Recent Activity */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Recent Activity</CardTitle>
+                        <CardDescription>
+                            Latest events from your homelab
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4">
+                            <div className="flex items-center space-x-4 text-sm">
+                                <div className="flex h-2 w-2 rounded-full bg-green-500"></div>
+                                <span className="flex-1">Proxmox VE Server came online</span>
+                                <span className="text-muted-foreground">2 minutes ago</span>
+                            </div>
+                            <div className="flex items-center space-x-4 text-sm">
+                                <div className="flex h-2 w-2 rounded-full bg-blue-500"></div>
+                                <span className="flex-1">TrueNAS backup completed successfully</span>
+                                <span className="text-muted-foreground">1 hour ago</span>
+                            </div>
+                            <div className="flex items-center space-x-4 text-sm">
+                                <div className="flex h-2 w-2 rounded-full bg-yellow-500"></div>
+                                <span className="flex-1">High CPU usage detected on Valheim Server</span>
+                                <span className="text-muted-foreground">3 hours ago</span>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
         </AppLayout>
     );
