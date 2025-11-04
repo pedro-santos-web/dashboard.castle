@@ -23,7 +23,7 @@ Laravel dashboard application built with React, TypeScript, and Tailwind CSS.
 - **Hot Module Replacement** for rapid development
 - **Server-Side Rendering (SSR)** support
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 ### Backend
 - **PHP 8.4+** - Modern PHP features
@@ -38,7 +38,7 @@ Laravel dashboard application built with React, TypeScript, and Tailwind CSS.
 - **Lucide React** - Beautiful icons
 - **Vite** - Fast build tool
 
-## 📋 Requirements
+## Requirements
 
 - **PHP**: 8.4 or higher
 - **Node.js**: 18 or higher
@@ -114,7 +114,7 @@ npm run dev
 
 Visit `http://localhost:8000` to see your application.
 
-## 🔧 Available Scripts
+## Available Scripts
 
 ### PHP/Laravel Scripts
 ```bash
@@ -173,11 +173,11 @@ composer run dev
 6. Push to the branch: `git push origin feature-name`
 7. Submit a pull request
 
-## 📝 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - [Laravel](https://laravel.com/) - The PHP framework for web artisans
 - [React](https://reactjs.org/) - A JavaScript library for building user interfaces
