@@ -9,7 +9,14 @@ class ServerController extends Controller
 {
     public function index()
     {
-        return response()->json(Server::all());
+        // Always return fresh data - optionally refresh status
+        $servers = Server::all();
+
+        // Add cache headers to prevent stale data
+        return response()->json($servers)
+            ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
     }
 
     public function store(Request $request)

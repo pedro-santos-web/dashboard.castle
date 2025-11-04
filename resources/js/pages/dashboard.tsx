@@ -8,7 +8,7 @@ import { dashboard } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import { RefreshCw, Settings } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -26,43 +26,85 @@ interface ServerData {
     last_ping: string | null;
 }
 
+interface StatusUpdate {
+    id: number;
+    name: string;
+    ip_address: string;
+    is_online: boolean;
+    checked_at: string;
+}
+
 export default function Dashboard() {
     const [servers, setServers] = useState<ServerData[]>([]);
     const [loading, setLoading] = useState(true);
-    const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+    const [refreshing, setRefreshing] = useState(false);
+    const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
-    const fetchServers = async () => {
+    const fetchServers = useCallback(async () => {
         try {
             setLoading(true);
             const response = await fetch('/api/servers');
             const data = await response.json();
             setServers(data);
-            setLastRefresh(new Date());
+            setLastUpdate(new Date());
         } catch (error) {
             console.error('Failed to fetch servers:', error);
         } finally {
             setLoading(false);
         }
-    };
-
-    const refreshStatus = async () => {
+    }, []);    const refreshStatus = useCallback(async () => {
         try {
-            const response = await fetch('/api/status');
-            const data = await response.json();
-            setServers(data);
-            setLastRefresh(new Date());
+            setRefreshing(true);
+            const response = await fetch('/api/status/quick', {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Cache-Control': 'no-cache',
+                    'Pragma': 'no-cache'
+                },
+            });
+
+            if (response.ok) {
+                const statusData: StatusUpdate[] = await response.json();
+
+                // Update servers with new status data using functional update
+                setServers(prevServers =>
+                    prevServers.map(server => {
+                        const statusUpdate = statusData.find((s: StatusUpdate) => s.id === server.id);
+                        return statusUpdate ? {
+                            ...server,
+                            status: statusUpdate.is_online ? 'online' as const : 'offline' as const
+                        } : server;
+                    })
+                );
+
+                setLastUpdate(new Date());
+                console.log('Status refreshed:', statusData);
+            }
         } catch (error) {
             console.error('Failed to refresh status:', error);
+        } finally {
+            setRefreshing(false);
         }
-    };
+    }, []); // No dependencies needed since we use functional updates
 
     useEffect(() => {
-        fetchServers();
+        const initializeDashboard = async () => {
+            await fetchServers();
+            // Small delay to ensure servers state is updated, then check status
+            setTimeout(() => {
+                refreshStatus();
+            }, 500);
+        };
+
+        initializeDashboard();
 
         // Auto-refresh every 30 seconds
         const interval = setInterval(refreshStatus, 30000);
         return () => clearInterval(interval);
-    }, []);
+    }, [fetchServers, refreshStatus]);
 
     const onlineServers = servers.filter(server => server.status === 'online').length;
     const totalServers = servers.length;
@@ -84,16 +126,16 @@ export default function Dashboard() {
                     </div>
                     <div className="flex items-center space-x-2">
                         <p className="text-sm text-muted-foreground">
-                            Last updated: {lastRefresh.toLocaleTimeString()}
+                            Last updated: {lastUpdate?.toLocaleTimeString() || 'Never'}
                         </p>
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={refreshStatus}
-                            disabled={loading}
+                            disabled={loading || refreshing}
                         >
-                            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                            Refresh
+                            <RefreshCw className={`h-4 w-4 mr-2 ${(loading || refreshing) ? 'animate-spin' : ''}`} />
+                            {refreshing ? 'Refreshing...' : 'Refresh'}
                         </Button>
                         <Button variant="outline" size="sm">
                             <Settings className="h-4 w-4 mr-2" />

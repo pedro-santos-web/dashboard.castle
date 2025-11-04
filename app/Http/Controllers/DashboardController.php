@@ -13,9 +13,6 @@ class DashboardController extends Controller
      */
     public function index()
     {
-        $servers = Server::select(['id', 'name', 'ip_address', 'status', 'last_ping'])
-            ->get();
-
-        return Inertia::render('dashboard', compact('servers'));
+        return Inertia::render('dashboard');
     }
 }
